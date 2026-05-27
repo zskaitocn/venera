@@ -1,6 +1,6 @@
 import Flutter
 import UIKit
-import UniformTypeIdentifiers
+import MobileCoreServices
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, UIDocumentPickerDelegate {
@@ -51,10 +51,10 @@ import UniformTypeIdentifiers
   }
 
   func getDirectoryPath() {
-    let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.folder], asCopy: false)
+    // Use iOS 8-13 compatible API (deprecated in iOS 14)
+    let documentPicker = UIDocumentPickerViewController(documentTypes: [String(kUTTypeFolder)], in: .open)
     documentPicker.delegate = self
     documentPicker.allowsMultipleSelection = false
-    documentPicker.directoryURL = nil
     documentPicker.modalPresentationStyle = .formSheet
 
     if let rootViewController = window?.rootViewController {

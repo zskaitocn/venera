@@ -1,0 +1,84 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ ios12-compat, master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS (iOS 12 Compatible)
+    runs-on: macos-13
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Flutter 3.24.4
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.4'
+        channel: 'stable'
+        
+    - name: Verify Flutter installation
+      run: |
+        flutter --version
+        flutter doctor -v
+        
+    - name: Get dependencies
+      run: flutter pub get
+      
+    - name: Check iOS deployment target
+      run: |
+        echo "=== Podfile platform ==="
+        grep "platform :ios" ios/Podfile
+        echo ""
+        echo "=== project.pbxproj IPHONEOS_DEPLOYMENT_TARGET ==="
+        grep "IPHONEOS_DEPLOYMENT_TARGET" ios/Runner.xcodeproj/project.pbxproj | head -5
+        
+    - name: Build iOS (no code signing)
+      run: |
+        cd $GITHUB_WORKSPACE
+        flutter build ios --release --no-codesign --verbose
+      timeout-minutes: 45
+      
+    - name: Verify build output
+      run: |
+        echo "=== Build output ==="
+        ls -la build/ios/iphoneos/ || echo "Build directory not found"
+        if [ -d "build/ios/iphoneos/Runner.app" ]; then
+          echo "✅ Runner.app found"
+          ls -lh build/ios/iphoneos/Runner.app/
+          du -sh build/ios/iphoneos/Runner.app/
+        else
+          echo "❌ Runner.app not found"
+          exit 1
+        fi
+        
+    - name: Package IPA
+      run: |
+        cd build/ios/iphoneos/
+        mkdir -p Payload
+        cp -r Runner.app Payload/
+        zip -r venera-ios12.ipa Payload/
+        ls -lh venera-ios12.ipa
+        echo "✅ IPA created successfully"
+        
+    - name: Upload IPA as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: venera-ios12-${{ github.run_number }}
+        path: build/ios/iphoneos/venera-ios12.ipa
+        retention-days: 30
+        
+    - name: Upload build logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs-${{ github.run_number }}
+        path: |
+          build/
+          ~/.flutter_log
+        retention-days: 7

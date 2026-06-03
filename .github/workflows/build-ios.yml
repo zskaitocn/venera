@@ -9,8 +9,12 @@ on:
 
 jobs:
   build-ios:
-    name: Build iOS (iOS 12 Compatible)
-    runs-on: macos-13
+    name: Build iOS (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-13, macos-latest]
     
     steps:
     - name: Checkout code
